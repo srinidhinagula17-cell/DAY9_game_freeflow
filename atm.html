@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ATM Menu</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(120deg, #385170, #24455a);
+      color: #f8f8f8;
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+    }
+    .atm-card {
+      background: rgba(255, 255, 255, 0.11);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 14px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+      width: min(420px, 100%);
+      padding: 24px;
+      backdrop-filter: blur(8px);
+    }
+    .atm-card h1 {
+      margin: 0 0 18px;
+      font-size: 1.75rem;
+      text-align: center;
+      letter-spacing: 0.36px;
+    }
+    .atm-card button {
+      width: 100%;
+      margin: 8px 0;
+      padding: 12px 14px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #1e2630;
+      transition: transform 0.18s ease, filter 0.18s ease;
+    }
+    .atm-card button:hover {
+      transform: translateY(-2px);
+      filter: brightness(1.05);
+    }
+    .btn-start {
+      background: #55d8ff;
+    }
+    .btn-reset {
+      background: #ffb86c;
+    }
+    .info {
+      margin-top: 16px;
+      background: rgba(255, 255, 255, 0.11);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 0.98rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="atm-card">
+    <h1>ATM Menu (do...while)</h1>
+    <button class="btn-start" id="btnStart">Start ATM Menu</button>
+    <button class="btn-reset" id="btnReset">Reset Balance</button>
+    <div class="info" id="status">Balance: $1000.00</div>
+  </div>
+
+  <script>
+    (function () {
+      let balance = 1000.0;
+      const statusEl = document.getElementById("status");
+      const updateStatus = () => {
+        statusEl.textContent = "Balance: $" + balance.toFixed(2);
+      };
+
+      function atmMenu() {
+        let selection;
+        do {
+          selection = prompt(
+            "ATM MENU\n1) Check Balance\n2) Deposit\n3) Withdrawal\n4) Exit\n\nEnter choice (1-4):"
+          );
+          if (selection === null) {
+            alert("Menu cancelled. Returning to page.");
+            break;
+          }
+
+          selection = selection.trim();
+
+          switch (selection) {
+            case "1":
+              alert("Current balance: $" + balance.toFixed(2));
+              break;
+
+            case "2":
+              {
+                let deposit = prompt("Enter deposit amount:");
+                if (deposit === null) {
+                  alert("Deposit cancelled.");
+                  break;
+                }
+                deposit = parseFloat(deposit);
+                if (isNaN(deposit) || deposit <= 0) {
+                  alert("Invalid deposit amount. Please enter a positive number.");
+                } else {
+                  balance += deposit;
+                  updateStatus();
+                  alert("Deposit successful. New balance: $" + balance.toFixed(2));
+                }
+              }
+              break;
+
+            case "3":
+              {
+                let withdraw = prompt("Enter withdrawal amount:");
+                if (withdraw === null) {
+                  alert("Withdrawal cancelled.");
+                  break;
+                }
+                withdraw = parseFloat(withdraw);
+                if (isNaN(withdraw) || withdraw <= 0) {
+                  alert("Invalid withdrawal amount. Please enter a positive number.");
+                } else if (withdraw > balance) {
+                  alert("Insufficient funds. Current balance: $" + balance.toFixed(2));
+                } else {
+                  balance -= withdraw;
+                  updateStatus();
+                  alert(
+                    "Withdrawal successful. New balance: $" + balance.toFixed(2)
+                  );
+                }
+              }
+              break;
+
+            case "4":
+              alert("Thank you! Exiting ATM menu.");
+              break;
+
+            default:
+              alert("Invalid choice. Please enter 1, 2, 3, or 4.");
+              break;
+          }
+        } while (selection !== "4");
+      }
+
+      document.getElementById("btnStart").addEventListener("click", atmMenu);
+      document.getElementById("btnReset").addEventListener("click", function () {
+        balance = 1000.0;
+        updateStatus();
+        alert("Balance reset to $1000.00");
+      });
+
+      updateStatus();
+    })();
+  </script>
+</body>
+</html>

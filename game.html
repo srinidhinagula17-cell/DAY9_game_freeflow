@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Flow Free Clone</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      display:flex; align-items:center; justify-content:center;
+      background: linear-gradient(135deg,#212a3f,#0f1a2f);
+      color:#eef2ff;
+    }
+    #game {
+      width: 460px; background:#14213d; padding:16px; border-radius:14px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.45); margin: 20px;
+    }
+    h1 { text-align:center; margin:0 0 12px; font-size:1.35rem; }
+    #status { text-align:center; margin-bottom:12px; }
+    #board {
+      width: 100%; padding-bottom: 100%; position: relative;
+      border-radius: 12px; background: #0f1b37;
+    }
+    .cell {
+      position:absolute; border: 1px solid #2e3d68;
+      user-select:none;
+    }
+    .endpoint {
+      box-shadow: 0 0 0 3px rgba(255,255,255,.3);
+    }
+    .dot {
+      width: 100%; height: 100%; border-radius:50%;
+      transform: translate3d(0,0,0);
+    }
+    #controls { display:flex; justify-content:space-between; margin-top:12px; }
+    button { background:#6c78c9; border:none; color:white; border-radius:8px;
+      padding:8px 14px; font-weight:600; cursor:pointer; }
+    button:hover { filter:brightness(1.1); }
+  </style>
+</head>
+<body>
+  <div id="game">
+    <h1>Flow Free</h1>
+    <div id="status">Connect all same colors (5x5).</div>
+    <div id="board"></div>
+    <div id="controls">
+      <button id="shuffleBtn">New Puzzle</button>
+      <button id="clearBtn">Clear</button>
+    </div>
+  </div>
+
+  <script>
+    const SIZE = 5;
+    const colors = ["#e63946","#f4a261","#2a9d8f","#0077b6"];
+    const boardEl = document.getElementById("board");
+    const statusEl = document.getElementById("status");
+    const shuffleBtn = document.getElementById("shuffleBtn");
+    const clearBtn = document.getElementById("clearBtn");
+
+    let grid = [];
+    let endpoints = {};
+    let paths = {};
+    let activeColor = null;
+    let drawing = false;
+    let currentPath = [];
+
+    function createGrid() {
+      boardEl.innerHTML = "";
+      grid = Array(SIZE).fill(null).map(()=>Array(SIZE).fill(null));
+      boardEl.style.gridTemplateColumns = `repeat(${SIZE},1fr)`;
+      const cellSize = boardEl.clientWidth / SIZE;
+      for (let r=0;r<SIZE;r++) {
+        for (let c=0;c<SIZE;c++){
+          const div = document.createElement("div");
+          div.className="cell"; div.style.width=cellSize+"px"; div.style.height=cellSize+"px";
+          div.style.left=(c*cellSize)+"px"; div.style.top=(r*cellSize)+"px";
+          div.dataset.r=r; div.dataset.c=c;
+          boardEl.appendChild(div);
+        }
+      }
+    }
+
+    function setEndpoints(pairs) {
+      endpoints = {}; paths = {};
+      for (const [color, [a,b]] of Object.entries(pairs)) {
+        endpoints[color] = [a,b];
+        paths[color] = [];
+      }
+      document.querySelectorAll(".cell").forEach(cell=>{
+        const r=+cell.dataset.r, c=+cell.dataset.c;
+        cell.classList.remove("endpoint");
+        cell.innerHTML="";
+        for (const color in endpoints) {
+          const pts = endpoints[color];
+          if ((r===pts[0][0] && c===pts[0][1]) || (r===pts[1][0] && c===pts[1][1])) {
+            cell.classList.add("endpoint");
+            const dot = document.createElement("div"); dot.className="dot";
+            dot.style.background = color;
+            dot.style.transform = "scale(0.5)";
+            cell.appendChild(dot);
+          }
+        }
+      });
+      drawPaths();
+    }
+
+    function neighbors(r,c){
+      return [[r-1,c],[r+1,c],[r,c-1],[r,c+1]].filter(([x,y])=>x>=0 && x<SIZE && y>=0 && y<SIZE);
+    }
+
+    function getCell(r,c){return document.querySelector(`.cell[data-r='${r}'][data-c='${c}']`);}
+    function setCell(r,c,color,ml=0.5){
+      const cell = getCell(r,c); cell.innerHTML="";
+      const dot = document.createElement("div"); dot.className="dot";
+      dot.style.background=color; dot.style.transform=`scale(${ml})`;
+      dot.style.borderColor="#fff"; dot.style.borderStyle="solid"; dot.style.borderWidth="0";
+      cell.appendChild(dot);
+    }
+
+    function drawPaths() {
+      document.querySelectorAll(".cell").forEach(cell=>{
+        if(!cell.classList.contains("endpoint")) cell.innerHTML="";
+      });
+      for (const color in paths) {
+        for (const [r,c] of paths[color]) {
+          setCell(r,c,color,0.8);
+        }
+        for (const [r,c] of endpoints[color]) {
+          setCell(r,c,color,0.6);
+        }
+      }
+    }
+
+    function isEndpoint(r,c){ return Object.keys(endpoints).find(color=>{
+      const pts=endpoints[color]; return pts.some(p=>p[0]===r && p[1]===c);
+    }) || null; }
+
+    boardEl.addEventListener("mousedown", e=>{
+      const cell = e.target.closest(".cell");
+      if(!cell) return;
+      const r=+cell.dataset.r, c=+cell.dataset.c;
+      const color = isEndpoint(r,c);
+      if(!color) return;
+      activeColor=color; drawing=true; currentPath=[[r,c]];
+      paths[color]=[[r,c]];
+      drawPaths();
+    });
+
+    boardEl.addEventListener("mousemove", e=>{
+      if(!drawing||!activeColor) return;
+      const cell = e.target.closest(".cell"); if(!cell) return;
+      const r=+cell.dataset.r, c=+cell.dataset.c;
+      const last = currentPath[currentPath.length-1];
+      if (r===last[0] && c===last[1]) return;
+      if (!neighbors(r,c).some(n=>n[0]===last[0]&&n[1]===last[1])) return;
+      const otherColor = Object.keys(paths).find(col=>paths[col].some(([x,y])=>x===r&&y===c) && col!==activeColor);
+      if(otherColor) return;
+      currentPath.push([r,c]);
+      paths[activeColor] = [...currentPath];
+      drawPaths();
+    });
+
+    window.addEventListener("mouseup", () => {
+      if(!drawing) return;
+      drawing=false;
+      const last = currentPath[currentPath.length-1];
+      const eps = endpoints[activeColor];
+      if (!(last[0]===eps[1][0] && last[1]===eps[1][1]) && !(last[0]===eps[0][0] && last[1]===eps[0][1])) {
+        paths[activeColor] = endpoints[activeColor].slice();
+      }
+      activeColor=null;
+      drawPaths(); checkWin();
+    });
+
+    function checkWin() {
+      const allFilled = Object.values(paths).every(path=>{
+        const ep = endpoints[Object.keys(paths).find(k=>paths[k]===path)];
+        return path.length>1 && path.some(([r,c])=>r===ep[0][0]&&c===ep[0][1]) && path.some(([r,c])=>r===ep[1][0]&&c===ep[1][1]);
+      });
+      const used = [].concat(...Object.values(paths));
+      const uniq = new Set(used.map(x=>x.join(",")));
+      if (allFilled && uniq.size===SIZE*SIZE) { statusEl.textContent="🎉 Level Complete!"; }
+      else if (allFilled) { statusEl.textContent="✅ All colors connected, fill all cells."; }
+      else { statusEl.textContent="Keep connecting endpoints..."; }
+    }
+
+    function newPuzzle() {
+      createGrid();
+      const sample = {
+        "#e63946":[[0,0],[3,1]],
+        "#f4a261":[[1,4],[4,3]],
+        "#2a9d8f":[[0,3],[2,4]],
+        "#0077b6":[[4,0],[4,4]]
+      };
+      setEndpoints(sample);
+      statusEl.textContent="Connect all same colors (5x5).";
+    }
+
+    clearBtn.addEventListener("click", ()=>{
+      for (const c in endpoints) paths[c]=[...endpoints[c]];
+      drawPaths();
+      statusEl.textContent="Cleared. Start connecting again.";
+    });
+
+    shuffleBtn.addEventListener("click", newPuzzle);
+    newPuzzle();
+  </script>
+</body>
+</html>
